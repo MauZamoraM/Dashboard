@@ -1,294 +1,221 @@
 import { Helmet } from 'react-helmet-async';
 import { filter } from 'lodash';
 import { sentenceCase } from 'change-case';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import { Loading, Input, Button, Spacer } from '@nextui-org/react';
+import CloudQueueIcon from '@mui/icons-material/CloudQueue';
+import * as XLSX from 'xlsx';
 // @mui
 import {
-  Card,
-  Table,
   Stack,
-  Paper,
-  Avatar,
-  Button,
-  Popover,
-  Checkbox,
-  TableRow,
-  MenuItem,
-  TableBody,
-  TableCell,
   Container,
   Typography,
-  IconButton,
-  TableContainer,
-  TablePagination,
+  Grid,
+  TextField
 } from '@mui/material';
-// components
-import Label from '../components/label';
+import Box from "@mui/material/Box";
+import { AccessTime } from "@mui/icons-material";
+import { GoogleMap, LoadScript, Marker, MarkerClusterer } from '@react-google-maps/api';
 import Iconify from '../components/iconify';
-import Scrollbar from '../components/scrollbar';
-// sections
-import { UserListHead, UserListToolbar } from '../sections/@dashboard/user';
-// mock
-import USERLIST from '../_mock/user';
-
-// ----------------------------------------------------------------------
-
-const TABLE_HEAD = [
-  { id: 'name', label: 'Name', alignRight: false },
-  { id: 'company', label: 'Company', alignRight: false },
-  { id: 'role', label: 'Role', alignRight: false },
-  { id: 'isVerified', label: 'Verified', alignRight: false },
-  { id: 'status', label: 'Status', alignRight: false },
-  { id: '' },
-];
-
-// ----------------------------------------------------------------------
-
-function descendingComparator(a, b, orderBy) {
-  if (b[orderBy] < a[orderBy]) {
-    return -1;
-  }
-  if (b[orderBy] > a[orderBy]) {
-    return 1;
-  }
-  return 0;
+//-------------------------------------------------------
+let data;
+const clients = {
+  waypoints: [],
+  cedis: []
 }
 
-function getComparator(order, orderBy) {
-  return order === 'desc'
-    ? (a, b) => descendingComparator(a, b, orderBy)
-    : (a, b) => -descendingComparator(a, b, orderBy);
-}
-
-function applySortFilter(array, comparator, query) {
-  const stabilizedThis = array.map((el, index) => [el, index]);
-  stabilizedThis.sort((a, b) => {
-    const order = comparator(a[0], b[0]);
-    if (order !== 0) return order;
-    return a[1] - b[1];
-  });
-  if (query) {
-    return filter(array, (_user) => _user.name.toLowerCase().indexOf(query.toLowerCase()) !== -1);
-  }
-  return stabilizedThis.map((el) => el[0]);
-}
-
+const center = { lat: 19.315894763362834, lng: -99.29042303916954 }
+const containerStyle = {
+  width: '100%',
+  height: '400px'
+};
+//--------------------------------------------------------
 export default function UserPage() {
-  const [open, setOpen] = useState(null);
+  const [shouldRenderWaypoints, setShouldRenderWaypoints] = useState(false);
+  const [loading, setLoading] = useState(false);
+  // const { isLoaded } = useJsApiLoader({
+  //   googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY,
+  //   libraries: ['places'],
+  // })
+  const fileInputRef = useRef();
 
-  const [page, setPage] = useState(0);
+  function readExcel(file) {
+    const promise = new Promise((resolve, reject) => {
+      setLoading(true);
+      const fileReader = new FileReader();
+      fileReader.readAsArrayBuffer(file);
+      fileReader.onloadstart = () => {
+        // muestra la barra de carga o un mensaje de espera
+        console.log("Cargando archivo...");
+      };
+      fileReader.onload = (e) => {
+        const bufferArray = e.target.result;
+        const wb = XLSX.read(bufferArray, { type: 'buffer' });
+        const wsname = wb.SheetNames[2];
+        const ws = wb.Sheets[wsname];
+        const data = XLSX.utils.sheet_to_json(ws);
+        resolve(data);
+      };
+      fileReader.onerror = (error) => {
+        reject(error);
+      };
+    })
+    promise.then((d) => {
+      // oculta la barra de carga o el mensaje de espera
+      setLoading(false);
+      console.log("Los datos se cargaron correctamente.");
+      data = d;
+      console.log(data)
+    })
+    // Math.random() * (to - from) + from).toFixed(fixed) * 1
 
-  const [order, setOrder] = useState('asc');
 
-  const [selected, setSelected] = useState([]);
+  }
 
-  const [orderBy, setOrderBy] = useState('name');
+  function handleGenerateClick() {
+    setShouldRenderWaypoints(false);
+    clients.waypoints = [];
+    clients.cedis = [];
+    let i = 0;
+    let j = 0;
+    const clientes = document.getElementById("clientes").value;
+    const cedis = document.getElementById("cedis").value;
 
-  const [filterName, setFilterName] = useState('');
-
-  const [rowsPerPage, setRowsPerPage] = useState(5);
-
-  const handleOpenMenu = (event) => {
-    setOpen(event.currentTarget);
-  };
-
-  const handleCloseMenu = () => {
-    setOpen(null);
-  };
-
-  const handleRequestSort = (event, property) => {
-    const isAsc = orderBy === property && order === 'asc';
-    setOrder(isAsc ? 'desc' : 'asc');
-    setOrderBy(property);
-  };
-
-  const handleSelectAllClick = (event) => {
-    if (event.target.checked) {
-      const newSelecteds = USERLIST.map((n) => n.name);
-      setSelected(newSelecteds);
-      return;
+    console.log(clientes, cedis); // o haga lo que necesite con estos valores
+    // Agrega clientes aleatorios
+    while (i < clientes) {
+      clients.waypoints.push({ lat: Math.random() * (19.6 - (19.1)) + (19.1), long: Math.random() * (-98.9 - (-99.3)) + (-99.3), order: Math.floor(Math.random() * 400) + 1 });
+      i += 1
     }
-    setSelected([]);
-  };
+    // Agrega cedis con camiones y carga maxima 
+    while (j < cedis) {
+      const camiones = [];
+      let z = 0;
+      while (z < Math.floor(Math.random() * 201) + 200) {
+        const stdDev = (500 - 2000) / 3.29;
+        let num;
+        do {
+          num = Math.round((Math.random() * 2 - 1) * stdDev + 2000);
+        } while (num < 500 || num > 2800);
+        camiones.push({ id: z, capacity: num })
+        z += 1
+      }
+      clients.cedis.push({ lat: Math.random() * (19.6 - (19.1)) + (19.1), long: Math.random() * (-98.9 - (-99.3)) + (-99.3), camion: camiones });
+      j += 1;
 
-  const handleClick = (event, name) => {
-    const selectedIndex = selected.indexOf(name);
-    let newSelected = [];
-    if (selectedIndex === -1) {
-      newSelected = newSelected.concat(selected, name);
-    } else if (selectedIndex === 0) {
-      newSelected = newSelected.concat(selected.slice(1));
-    } else if (selectedIndex === selected.length - 1) {
-      newSelected = newSelected.concat(selected.slice(0, -1));
-    } else if (selectedIndex > 0) {
-      newSelected = newSelected.concat(selected.slice(0, selectedIndex), selected.slice(selectedIndex + 1));
     }
-    setSelected(newSelected);
-  };
-
-  const handleChangePage = (event, newPage) => {
-    setPage(newPage);
-  };
-
-  const handleChangeRowsPerPage = (event) => {
-    setPage(0);
-    setRowsPerPage(parseInt(event.target.value, 10));
-  };
-
-  const handleFilterByName = (event) => {
-    setPage(0);
-    setFilterName(event.target.value);
-  };
-
-  const emptyRows = page > 0 ? Math.max(0, (1 + page) * rowsPerPage - USERLIST.length) : 0;
-
-  const filteredUsers = applySortFilter(USERLIST, getComparator(order, orderBy), filterName);
-
-  const isNotFound = !filteredUsers.length && !!filterName;
-
+    console.log(clients)
+    setTimeout(() => setShouldRenderWaypoints(true), 1000);
+    }
+    
+    
+  
   return (
     <>
       <Helmet>
-        <title> User | Minimal UI </title>
+        <title> Inicio </title>
       </Helmet>
 
       <Container>
         <Stack direction="row" alignItems="center" justifyContent="space-between" mb={5}>
           <Typography variant="h4" gutterBottom>
-            User
+            Bienvenido!
           </Typography>
-          <Button variant="contained" startIcon={<Iconify icon="eva:plus-fill" />}>
+          {/* <Button variant="contained" startIcon={<Iconify icon="eva:plus-fill" />}>
             New User
-          </Button>
+          </Button> */}
         </Stack>
+        <Grid item xs={12} sm={9} display='flex' justifyContent='space-between' alignItems='center'>
+          {/* <Box
+            component='div'
+            sx={{
+              width: '60px',
+              height: '60px',
+              borderRadius: '50%',
+              border: '1px solid E5E5E5FF',
+              backgroundColor: '#e5e5e5',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              cursor: 'pointer'
+            }}
+            onClick={() => fileInputRef.current.click()}
+          >
+            <AccessTime fontSize='medium' />
+          </Box>
+          <Box
+            component='div'
+            sx={{
+              width: '80%',
+              height: '100%',
+              borderRadius: '12px',
+              border: '1px solid #d3d3d3',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center'
+            }}
 
-        <Card>
-          <UserListToolbar numSelected={selected.length} filterName={filterName} onFilterName={handleFilterByName} />
+          >
+            <Typography component='h2' fontSize={"medium"}>
+              <span
+                style={{ fontWeight: 'bold', color: '#2196f3', cursor: 'pointer' }}
+              // onClick={ () => fileInputRef.current.click() }
+              >
+                Click to upload
+              </span>
+              , png, jpg, jpeg
+            </Typography>
+          </Box> */}
+          <Typography variant="h5" gutterBottom>
+            Escoge las siguientes opciones para generar un numero random para cada opcion:
+          </Typography>
 
-          <Scrollbar>
-            <TableContainer sx={{ minWidth: 800 }}>
-              <Table>
-                <UserListHead
-                  order={order}
-                  orderBy={orderBy}
-                  headLabel={TABLE_HEAD}
-                  rowCount={USERLIST.length}
-                  numSelected={selected.length}
-                  onRequestSort={handleRequestSort}
-                  onSelectAllClick={handleSelectAllClick}
+          {loading && <Loading type="points" />}
+          {/* <TextField
+            fullWidth
+            type='file'
+            id="file"
+            name='file'
+            value={undefined}
+            onChange={(e) => {
+              const file = e.target.files[0];
+              readExcel(file);
+            }}
+            sx={{ display: 'none' }}
+            inputRef={fileInputRef}
+            inputProps={{ accept: 'image/*' }}
+          /> */}
+
+        </Grid>
+        <Box sx={{ mx: 'auto', mt: '1rem' }}>
+          <Input sx={{ mb: '1rem' }} labelPlaceholder="Clientes" id="clientes" />
+          <Input sx={{ mb: '1rem' }} labelPlaceholder="Cedis" id="cedis" />
+          <Spacer />
+
+        </Box>
+        <Button icon={<CloudQueueIcon fill="currentColor" />} color="success" onPress={() => handleGenerateClick()} >
+          Generar
+        </Button>
+        <Spacer />
+        <LoadScript
+          googleMapsApiKey="AIzaSyBLVDZMCwDct9gnHGb13nUkl7oHpEKG3Wg"
+        >
+          <GoogleMap
+            mapContainerStyle={containerStyle}
+            center={center}
+            zoom={10}
+            
+          >
+            {shouldRenderWaypoints && // Utiliza el estado para renderizar o no los marcadores
+              clients.waypoints.map((waypoint, index) => (
+                <Marker
+                  key={index}
+                  position={{ lat: waypoint.lat, lng: waypoint.long }}
                 />
-                <TableBody>
-                  {filteredUsers.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row) => {
-                    const { id, name, role, status, company, avatarUrl, isVerified } = row;
-                    const selectedUser = selected.indexOf(name) !== -1;
-
-                    return (
-                      <TableRow hover key={id} tabIndex={-1} role="checkbox" selected={selectedUser}>
-                        <TableCell padding="checkbox">
-                          <Checkbox checked={selectedUser} onChange={(event) => handleClick(event, name)} />
-                        </TableCell>
-
-                        <TableCell component="th" scope="row" padding="none">
-                          <Stack direction="row" alignItems="center" spacing={2}>
-                            <Avatar alt={name} src={avatarUrl} />
-                            <Typography variant="subtitle2" noWrap>
-                              {name}
-                            </Typography>
-                          </Stack>
-                        </TableCell>
-
-                        <TableCell align="left">{company}</TableCell>
-
-                        <TableCell align="left">{role}</TableCell>
-
-                        <TableCell align="left">{isVerified ? 'Yes' : 'No'}</TableCell>
-
-                        <TableCell align="left">
-                          <Label color={(status === 'banned' && 'error') || 'success'}>{sentenceCase(status)}</Label>
-                        </TableCell>
-
-                        <TableCell align="right">
-                          <IconButton size="large" color="inherit" onClick={handleOpenMenu}>
-                            <Iconify icon={'eva:more-vertical-fill'} />
-                          </IconButton>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                  {emptyRows > 0 && (
-                    <TableRow style={{ height: 53 * emptyRows }}>
-                      <TableCell colSpan={6} />
-                    </TableRow>
-                  )}
-                </TableBody>
-
-                {isNotFound && (
-                  <TableBody>
-                    <TableRow>
-                      <TableCell align="center" colSpan={6} sx={{ py: 3 }}>
-                        <Paper
-                          sx={{
-                            textAlign: 'center',
-                          }}
-                        >
-                          <Typography variant="h6" paragraph>
-                            Not found
-                          </Typography>
-
-                          <Typography variant="body2">
-                            No results found for &nbsp;
-                            <strong>&quot;{filterName}&quot;</strong>.
-                            <br /> Try checking for typos or using complete words.
-                          </Typography>
-                        </Paper>
-                      </TableCell>
-                    </TableRow>
-                  </TableBody>
-                )}
-              </Table>
-            </TableContainer>
-          </Scrollbar>
-
-          <TablePagination
-            rowsPerPageOptions={[5, 10, 25]}
-            component="div"
-            count={USERLIST.length}
-            rowsPerPage={rowsPerPage}
-            page={page}
-            onPageChange={handleChangePage}
-            onRowsPerPageChange={handleChangeRowsPerPage}
-          />
-        </Card>
+              ))}
+          </GoogleMap>
+        </LoadScript>
       </Container>
-
-      <Popover
-        open={Boolean(open)}
-        anchorEl={open}
-        onClose={handleCloseMenu}
-        anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
-        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-        PaperProps={{
-          sx: {
-            p: 1,
-            width: 140,
-            '& .MuiMenuItem-root': {
-              px: 1,
-              typography: 'body2',
-              borderRadius: 0.75,
-            },
-          },
-        }}
-      >
-        <MenuItem>
-          <Iconify icon={'eva:edit-fill'} sx={{ mr: 2 }} />
-          Edit
-        </MenuItem>
-
-        <MenuItem sx={{ color: 'error.main' }}>
-          <Iconify icon={'eva:trash-2-outline'} sx={{ mr: 2 }} />
-          Delete
-        </MenuItem>
-      </Popover>
     </>
   );
 }
