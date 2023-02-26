@@ -87,7 +87,6 @@ export default function UserPage() {
       clients.waypoints.push({ lat: Math.random() * (19.6 - (19.1)) + (19.1), long: Math.random() * (-98.9 - (-99.3)) + (-99.3), order: Math.floor(Math.random() * 400) + 1 });
       i += 1
     }
-    // Agrega cedis con camiones y carga maxima 
     while (j < cedis) {
       const camiones = [];
       let z = 0;
