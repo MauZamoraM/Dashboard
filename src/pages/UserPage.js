@@ -1,24 +1,19 @@
 import { Helmet } from 'react-helmet-async';
-import { filter } from 'lodash';
-import { sentenceCase } from 'change-case';
-import { useState, useRef } from 'react';
-import { Loading, Input, Button, Spacer } from '@nextui-org/react';
+import { useState } from 'react';
+import {  Input, Button, Spacer } from '@nextui-org/react';
 import CloudQueueIcon from '@mui/icons-material/CloudQueue';
-import * as XLSX from 'xlsx';
+// import * as XLSX from 'xlsx';
 // @mui
 import {
   Stack,
   Container,
   Typography,
-  Grid,
-  TextField
+  Grid
 } from '@mui/material';
 import Box from "@mui/material/Box";
-import { AccessTime } from "@mui/icons-material";
-import { GoogleMap, LoadScript, Marker, MarkerClusterer } from '@react-google-maps/api';
-import Iconify from '../components/iconify';
+import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
+
 //-------------------------------------------------------
-let data;
 const clients = {
   waypoints: [],
   cedis: []
@@ -32,45 +27,44 @@ const containerStyle = {
 //--------------------------------------------------------
 export default function UserPage() {
   const [shouldRenderWaypoints, setShouldRenderWaypoints] = useState(false);
-  const [loading, setLoading] = useState(false);
   // const { isLoaded } = useJsApiLoader({
   //   googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY,
   //   libraries: ['places'],
   // })
-  const fileInputRef = useRef();
+  // const fileInputRef = useRef();
 
-  function readExcel(file) {
-    const promise = new Promise((resolve, reject) => {
-      setLoading(true);
-      const fileReader = new FileReader();
-      fileReader.readAsArrayBuffer(file);
-      fileReader.onloadstart = () => {
-        // muestra la barra de carga o un mensaje de espera
-        console.log("Cargando archivo...");
-      };
-      fileReader.onload = (e) => {
-        const bufferArray = e.target.result;
-        const wb = XLSX.read(bufferArray, { type: 'buffer' });
-        const wsname = wb.SheetNames[2];
-        const ws = wb.Sheets[wsname];
-        const data = XLSX.utils.sheet_to_json(ws);
-        resolve(data);
-      };
-      fileReader.onerror = (error) => {
-        reject(error);
-      };
-    })
-    promise.then((d) => {
-      // oculta la barra de carga o el mensaje de espera
-      setLoading(false);
-      console.log("Los datos se cargaron correctamente.");
-      data = d;
-      console.log(data)
-    })
-    // Math.random() * (to - from) + from).toFixed(fixed) * 1
+  // function readExcel(file) {
+  //   const promise = new Promise((resolve, reject) => {
+  //     setLoading(true);
+  //     const fileReader = new FileReader();
+  //     fileReader.readAsArrayBuffer(file);
+  //     fileReader.onloadstart = () => {
+  //       // muestra la barra de carga o un mensaje de espera
+  //       console.log("Cargando archivo...");
+  //     };
+  //     fileReader.onload = (e) => {
+  //       const bufferArray = e.target.result;
+  //       const wb = XLSX.read(bufferArray, { type: 'buffer' });
+  //       const wsname = wb.SheetNames[2];
+  //       const ws = wb.Sheets[wsname];
+  //       const data = XLSX.utils.sheet_to_json(ws);
+  //       resolve(data);
+  //     };
+  //     fileReader.onerror = (error) => {
+  //       reject(error);
+  //     };
+  //   })
+  //   promise.then((d) => {
+  //     // oculta la barra de carga o el mensaje de espera
+  //     setLoading(false);
+  //     console.log("Los datos se cargaron correctamente.");
+  //     data = d;
+  //     console.log(data)
+  //   })
+  //   // Math.random() * (to - from) + from).toFixed(fixed) * 1
 
 
-  }
+  // }
 
   function handleGenerateClick() {
     setShouldRenderWaypoints(false);
@@ -169,7 +163,6 @@ export default function UserPage() {
             Escoge las siguientes opciones para generar un numero random para cada opcion:
           </Typography>
 
-          {loading && <Loading type="points" />}
           {/* <TextField
             fullWidth
             type='file'
